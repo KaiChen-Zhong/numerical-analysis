@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, Binary, BookOpen, Check, ListChecks, Sigma } from "lucide-react";
+import { ArrowRight, Binary, BookOpen, Check, Library, ListChecks, Route as RouteIcon, Sigma } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PriorityBadge } from "@/components/priority-badge";
+import { MarkdownView } from "@/components/markdown-view";
 import {
   CHAPTER_EXERCISES,
   OUT_OF_EXAM,
@@ -12,6 +13,9 @@ import {
   shortChapterTitle,
 } from "@/lib/content";
 import { PLAIN } from "@/lib/content/plain";
+import { GUIDES } from "@/lib/content/guides";
+import { MOVES } from "@/lib/content/moves";
+import { PAPERS } from "@/lib/content/papers";
 import { MIXUPS } from "@/lib/content/mixups";
 import { PROOFS } from "@/lib/content/proofs";
 import { EXERCISES } from "@/lib/content/exercises";
@@ -57,9 +61,12 @@ function Home() {
           数值分析考试讲义
         </h1>
         <p className="mt-4 max-w-xl text-base text-muted-foreground">
-          按张铁、邵新慧《数值分析》（科学出版社 2022）整理。记号、定理编号、例题编号和指定习题题面按书。第 5、9 章仍整章不考；书上的选学星号不改你的考试范围。
+          每一节先从你已经会的地方讲起，再顺着补到考试要写的程度。自己能说出来，再按手法做题。
         </p>
       </header>
+
+      <LearnEntry />
+      <ExamEntry />
 
       <Link
         to="/ai"
@@ -109,14 +116,18 @@ function Home() {
       <div className="mt-6 rounded-xl bg-card p-5 shadow-[var(--shadow-border)]">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs text-subtle">接着读</p>
+            <p className="text-xs text-subtle">先听这一节怎么讲</p>
             <p className="mt-1 font-display text-xl font-semibold">
-              {lastChapterId ? "继续上次的进度" : "从第一个重点小节开始"}
+              {lastChapterId ? "回到上次听的那一节" : "从误差这两把尺子听起"}
             </p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {PLAIN[`${continueTarget.chapterId}:${continueTarget.sectionId}`] ??
-                "打开讲义，按章节往下读。"}
-            </p>
+            <MarkdownView
+              markdown={
+                GUIDES[`${continueTarget.chapterId}:${continueTarget.sectionId}`]?.open ??
+                PLAIN[`${continueTarget.chapterId}:${continueTarget.sectionId}`] ??
+                "打开讲义，按章节往下听。"
+              }
+              className="mt-1 line-clamp-3 text-sm text-muted-foreground"
+            />
           </div>
           <Button asChild>
             <Link
@@ -124,7 +135,7 @@ function Home() {
               params={{ chapterId: continueTarget.chapterId }}
               search={{ s: continueTarget.sectionId }}
             >
-              开始阅读
+              打开讲义
               <ArrowRight className="size-4" />
             </Link>
           </Button>
@@ -173,9 +184,10 @@ function Home() {
                       </h3>
                       <PriorityBadge priority={pri} />
                     </div>
-                    <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-                      {PLAIN[`${ch.id}:intro`] ?? ch.title}
-                    </p>
+                    <MarkdownView
+                      markdown={GUIDES[`${ch.id}:intro`]?.open ?? PLAIN[`${ch.id}:intro`] ?? ch.title}
+                      className="mt-1 line-clamp-2 text-xs text-muted-foreground"
+                    />
                     <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[0.6875rem] text-subtle">
                       {focusN ? <span>重点 {focusN} 节</span> : null}
                       {optN ? <span>选择性 {optN} 节</span> : null}
@@ -238,6 +250,70 @@ function Home() {
         />
       </section>
     </div>
+  );
+}
+
+function LearnEntry() {
+  const movesDone = useProgress((s) => s.movesDone) ?? {};
+  const lastMoveId = useProgress((s) => s.lastMoveId);
+  const done = MOVES.filter((m) => movesDone[m.id]).length;
+  const move =
+    (lastMoveId ? MOVES.find((m) => m.id === lastMoveId) : undefined) ??
+    MOVES.find((m) => !movesDone[m.id]) ??
+    MOVES[0];
+
+  return (
+    <Link
+      to="/learn/$moveId"
+      params={{ moveId: move.id }}
+      className="mt-8 block rounded-xl bg-card p-5 shadow-[var(--shadow-border)] transition-[box-shadow] duration-150 hover:shadow-[var(--shadow-border-hover)]"
+    >
+      <div className="flex items-start gap-3">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-md bg-sunken text-cinnabar">
+          <RouteIcon className="size-4" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-medium tracking-[0.16em] text-cinnabar">先走这里</p>
+          <h2 className="mt-1 font-display text-2xl font-semibold tracking-tight">
+            {lastMoveId ? "继续上一招" : "从误差这一招开始"}
+          </h2>
+          <p className="mt-2 text-sm text-foreground">{move.section} {move.title}</p>
+          <p className="mt-1 max-w-xl text-sm text-muted-foreground">{move.job}</p>
+          <span className="mt-3 inline-flex h-10 items-center gap-1.5 text-sm font-medium text-primary">
+            {done > 0 ? `已会 ${done} / ${MOVES.length} 招` : `${MOVES.length} 招，一屏只讲一件事`}
+            <ArrowRight className="size-4" />
+          </span>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+function ExamEntry() {
+  const examsDone = useProgress((s) => s.examsDone) ?? {};
+  const done = PAPERS.filter((p) => examsDone[p.id]).length;
+  return (
+    <Link
+      to="/exams"
+      className="mt-3 block rounded-xl bg-card p-5 shadow-[var(--shadow-border)] transition-[box-shadow] duration-150 hover:shadow-[var(--shadow-border-hover)]"
+    >
+      <div className="flex items-start gap-3">
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-md bg-sunken text-primary">
+          <Library className="size-4" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-medium tracking-[0.16em] text-primary">真题</p>
+          <h2 className="mt-1 font-display text-2xl font-semibold tracking-tight">11 套期末卷</h2>
+          <p className="mt-2 max-w-xl text-sm text-muted-foreground">
+            2015 到 2026，按章排好。先做题，再打开详解。
+          </p>
+          <span className="mt-3 inline-flex h-10 items-center gap-1.5 text-sm font-medium text-primary">
+            {done > 0 ? `做过 ${done} / ${PAPERS.length}` : `${PAPERS.length} 题`}
+            <ArrowRight className="size-4" />
+          </span>
+        </div>
+      </div>
+    </Link>
   );
 }
 

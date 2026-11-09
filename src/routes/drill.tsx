@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Check, ChevronDown, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -6,6 +6,7 @@ import { MIXUPS } from "@/lib/content/mixups";
 import { PROOFS } from "@/lib/content/proofs";
 import { EXERCISE_NOTES, EXERCISES } from "@/lib/content/exercises";
 import { SOLUTION_NOTES, SOLUTIONS } from "@/lib/content/solutions";
+import { moveForProblem } from "@/lib/content/moves";
 import { getChapter, shortChapterTitle } from "@/lib/content";
 import { useProgress } from "@/lib/progress";
 import { MarkdownView } from "@/components/markdown-view";
@@ -14,17 +15,18 @@ import { cn } from "@/lib/utils";
 type Tab = "mixups" | "proofs" | "exercises";
 
 export const Route = createFileRoute("/drill")({
-  validateSearch: (s: Record<string, unknown>): { tab?: Tab } => {
+  validateSearch: (s: Record<string, unknown>): { tab?: Tab; p?: string } => {
     const t = s.tab;
-    if (t === "mixups" || t === "proofs" || t === "exercises") return { tab: t };
-    return {};
+    const tab = t === "mixups" || t === "proofs" || t === "exercises" ? t : undefined;
+    const p = typeof s.p === "string" && /^\d+-\d+$/.test(s.p) ? s.p : undefined;
+    return { tab, p };
   },
   component: DrillPage,
 });
 
 function DrillPage() {
   const search = Route.useSearch();
-  const tab: Tab = search.tab ?? "mixups";
+  const tab: Tab = search.tab ?? (search.p ? "exercises" : "mixups");
   const reset = useProgress((s) => s.reset);
 
   return (
@@ -36,7 +38,7 @@ function DrillPage() {
             易混 · 证明 · 习题
           </h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            判断题常从易混表出。证明先能默写步骤。指定习题是书上的题面，自己做，这里不给解答。
+            判断题常从易混表出。证明先能默写步骤。指定题先按手法写，写完再展开详解。
           </p>
         </div>
         <Button
@@ -60,7 +62,7 @@ function DrillPage() {
       <div className="mt-6">
         {tab === "mixups" ? <MixupList /> : null}
         {tab === "proofs" ? <ProofList /> : null}
-        {tab === "exercises" ? <ExerciseList /> : null}
+        {tab === "exercises" ? <ExerciseList focusNo={search.p} /> : null}
       </div>
     </div>
   );
@@ -226,12 +228,17 @@ function ProofList() {
   );
 }
 
-function ExerciseList() {
+function ExerciseList({ focusNo }: { focusNo?: string }) {
   const doneMap = useProgress((s) => s.exercisesDone);
   const toggle = useProgress((s) => s.toggleExercise);
   const done = EXERCISES.filter((e) => doneMap[e.id]).length;
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const [showNotes, setShowNotes] = useState(false);
+
+  useEffect(() => {
+    if (!focusNo) return;
+    document.getElementById(`problem-${focusNo}`)?.scrollIntoView({ block: "center" });
+  }, [focusNo]);
 
   return (
     <div>
@@ -278,9 +285,26 @@ function ExerciseList() {
               {e.problems.map((p) => {
                 const sol = SOLUTIONS[p.no];
                 const shown = Boolean(open[p.no]);
+                const move = moveForProblem(p.no);
                 return (
-                  <li key={p.no} className="rounded-lg bg-sunken px-3 py-3">
+                  <li
+                    key={p.no}
+                    id={`problem-${p.no}`}
+                    className={cn(
+                      "scroll-mt-24 rounded-lg bg-sunken px-3 py-3",
+                      focusNo === p.no && "bg-card shadow-[var(--shadow-border)]",
+                    )}
+                  >
                     <p className="font-mono text-xs tabular-nums text-cinnabar">{p.no}</p>
+                    {move ? (
+                      <Link
+                        to="/learn/$moveId"
+                        params={{ moveId: move.id }}
+                        className="mt-1 inline-flex min-h-10 items-center text-sm text-primary"
+                      >
+                        还写不出时，先看这一招：{move.title}
+                      </Link>
+                    ) : null}
                     <MarkdownView markdown={p.markdown} className="mt-1 text-sm" />
                     {sol ? (
                       <div className="mt-3">

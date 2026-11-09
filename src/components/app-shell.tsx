@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { BookOpen, Binary, Home, ListChecks, Search, Sigma, X } from "lucide-react";
+import { BookOpen, Binary, Home, Library, ListChecks, Route, Search, Sigma, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { PriorityBadge } from "@/components/priority-badge";
 import {
@@ -12,6 +12,8 @@ import {
   shortChapterTitle,
 } from "@/lib/content";
 import { AI_LESSONS, searchAi } from "@/lib/ai-track";
+import { MOVES, searchMoves } from "@/lib/content/moves";
+import { PAPER_CHAPTERS, PAPERS, searchPapers } from "@/lib/content/papers";
 import { sectionKey, useProgress } from "@/lib/progress";
 import { cn } from "@/lib/utils";
 
@@ -20,6 +22,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const lastChapterId = useProgress((s) => s.lastChapterId);
   const mastered = useProgress((s) => s.mastered);
   const aiMastered = useProgress((s) => s.aiMastered) ?? {};
+  const movesDone = useProgress((s) => s.movesDone) ?? {};
   const [q, setQ] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -41,17 +44,29 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const hits = useMemo(() => {
     if (q.trim().length < 1) return [];
-    const lecture = searchContent(q, 12).map((h) => ({
+    const moves = searchMoves(q, 6).map((h) => ({
+      kind: "move" as const,
+      id: h.id,
+      title: h.title,
+      snippet: h.snippet,
+    }));
+    const lecture = searchContent(q, 8).map((h) => ({
       kind: "lecture" as const,
       ...h,
     }));
-    const ai = searchAi(q, 8).map((h) => ({
+    const ai = searchAi(q, 6).map((h) => ({
       kind: "ai" as const,
       lessonId: h.lessonId,
       title: h.title,
       snippet: h.snippet,
     }));
-    return [...ai, ...lecture].slice(0, 16);
+    const papers = searchPapers(q, 6).map((h) => ({
+      kind: "paper" as const,
+      id: h.id,
+      title: h.title,
+      snippet: h.snippet,
+    }));
+    return [...papers, ...moves, ...lecture, ...ai].slice(0, 16);
   }, [q]);
 
   useEffect(() => {
@@ -79,6 +94,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </Link>
         <nav className="flex flex-col gap-0.5 px-3">
           <NavItem to="/" active={pathname === "/"} icon={Home} label="首页" />
+          <NavItem to="/learn" active={pathname.startsWith("/learn")} icon={Route} label="手法" />
           <NavItem
             to="/read/$chapterId"
             params={{ chapterId: lectureChapter }}
@@ -91,6 +107,12 @@ export function AppShell({ children }: { children: ReactNode }) {
             active={pathname.startsWith("/ai")}
             icon={Binary}
             label="AI 视角"
+          />
+          <NavItem
+            to="/exams"
+            active={pathname.startsWith("/exams")}
+            icon={Library}
+            label="真题"
           />
           <NavItem
             to="/formulas"
@@ -107,10 +129,49 @@ export function AppShell({ children }: { children: ReactNode }) {
         </nav>
         <div className="mt-5 flex min-h-0 flex-1 flex-col px-4">
           <p className="mb-2 px-1 text-[0.6875rem] font-medium tracking-wide text-subtle">
-            {pathname.startsWith("/ai") ? "AI 路径" : "章节"}
+            {pathname.startsWith("/learn") ? "手法" : pathname.startsWith("/ai") ? "AI 路径" : pathname.startsWith("/exams") ? "真题" : "章节"}
           </p>
           <div className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto pr-1">
-            {pathname.startsWith("/ai")
+            {pathname.startsWith("/exams")
+              ? PAPER_CHAPTERS.map((ch) => {
+                  const n = PAPERS.filter((p) => p.chapterId === ch.id).length;
+                  return (
+                    <Link
+                      key={ch.id}
+                      to="/exams"
+                      search={{ c: ch.id }}
+                      className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-[0.8125rem] text-muted-foreground transition-colors duration-150 hover:bg-muted/70 hover:text-foreground"
+                    >
+                      <span className="min-w-0 flex-1 truncate">{ch.label}</span>
+                      <span className="font-display text-xs tabular-nums text-subtle">{n}</span>
+                    </Link>
+                  );
+                })
+              : pathname.startsWith("/learn")
+              ? MOVES.map((m, i) => {
+                  const active = pathname === `/learn/${m.id}`;
+                  return (
+                    <Link
+                      key={m.id}
+                      to="/learn/$moveId"
+                      params={{ moveId: m.id }}
+                      className={cn(
+                        "flex items-center gap-2 rounded-sm px-2 py-1.5 text-[0.8125rem] transition-colors duration-150",
+                        active
+                          ? "bg-muted text-foreground"
+                          : "text-muted-foreground hover:bg-muted/70 hover:text-foreground",
+                      )}
+                    >
+                      <span className="w-5 shrink-0 font-display text-xs tabular-nums text-subtle">
+                        {i + 1}
+                      </span>
+                      <span className={cn("min-w-0 truncate", movesDone[m.id] && "text-pine")}>
+                        {m.title}
+                      </span>
+                    </Link>
+                  );
+                })
+              : pathname.startsWith("/ai")
               ? AI_LESSONS.map((l) => {
                   const active = pathname === `/ai/${l.id}`;
                   return (
@@ -168,15 +229,26 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
         <div className="mt-auto border-t border-border px-5 py-4">
           <p className="text-[0.6875rem] text-subtle">
-            {pathname.startsWith("/ai") ? "AI 路径" : "重点掌握"}
+            {pathname.startsWith("/learn")
+              ? "手法会写"
+              : pathname.startsWith("/ai")
+                ? "AI 路径"
+                : "重点掌握"}
           </p>
           <p className="mt-1 font-display text-lg tabular-nums">
-            {pathname.startsWith("/ai")
-              ? AI_LESSONS.filter((l) => aiMastered[l.id]).length
-              : focusDone}
+            {pathname.startsWith("/learn")
+              ? MOVES.filter((m) => movesDone[m.id]).length
+              : pathname.startsWith("/ai")
+                ? AI_LESSONS.filter((l) => aiMastered[l.id]).length
+                : focusDone}
             <span className="text-sm text-muted-foreground">
               {" "}
-              / {pathname.startsWith("/ai") ? AI_LESSONS.length : focusTotal}
+              /{" "}
+              {pathname.startsWith("/learn")
+                ? MOVES.length
+                : pathname.startsWith("/ai")
+                  ? AI_LESSONS.length
+                  : focusTotal}
             </span>
           </p>
           <div className="mt-2 h-1 overflow-hidden rounded-full bg-sunken">
@@ -186,9 +258,11 @@ export function AppShell({ children }: { children: ReactNode }) {
                 pathname.startsWith("/ai") ? "bg-pine" : "bg-primary",
               )}
               style={{
-                width: pathname.startsWith("/ai")
-                  ? `${(100 * AI_LESSONS.filter((l) => aiMastered[l.id]).length) / AI_LESSONS.length}%`
-                  : `${focusTotal ? (100 * focusDone) / focusTotal : 0}%`,
+                width: pathname.startsWith("/learn")
+                  ? `${(100 * MOVES.filter((m) => movesDone[m.id]).length) / MOVES.length}%`
+                  : pathname.startsWith("/ai")
+                    ? `${(100 * AI_LESSONS.filter((l) => aiMastered[l.id]).length) / AI_LESSONS.length}%`
+                    : `${focusTotal ? (100 * focusDone) / focusTotal : 0}%`,
               }}
             />
           </div>
@@ -205,7 +279,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           className="ml-auto flex h-10 min-w-0 flex-1 items-center gap-2 rounded-md border border-border bg-card px-3 text-left text-sm text-subtle shadow-[var(--shadow-border)] lg:max-w-md"
         >
           <Search className="size-4 shrink-0" />
-          <span className="truncate">搜索公式、章节、AI 视角</span>
+          <span className="truncate">搜索手法、真题、公式、章节</span>
           <kbd className="ml-auto hidden rounded-sm border border-border px-1.5 py-0.5 text-[0.6875rem] text-subtle sm:inline">
             ⌘K
           </kbd>
@@ -215,8 +289,9 @@ export function AppShell({ children }: { children: ReactNode }) {
       <main className="px-4 pb-24 pt-6 lg:ml-60 lg:px-8 lg:pb-12">{children}</main>
 
       <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-sm lg:hidden">
-        <div className="grid grid-cols-5">
+        <div className="grid grid-cols-7">
           <MobileItem to="/" active={pathname === "/"} icon={Home} label="首页" />
+          <MobileItem to="/learn" active={pathname.startsWith("/learn")} icon={Route} label="手法" />
           <MobileItem
             to="/read/$chapterId"
             params={{ chapterId: lectureChapter }}
@@ -224,6 +299,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             icon={BookOpen}
             label="讲义"
           />
+          <MobileItem to="/exams" active={pathname.startsWith("/exams")} icon={Library} label="真题" />
           <MobileItem
             to="/ai"
             active={pathname.startsWith("/ai")}
@@ -279,7 +355,41 @@ export function AppShell({ children }: { children: ReactNode }) {
                 </p>
               ) : null}
               {hits.map((h) =>
-                h.kind === "ai" ? (
+                h.kind === "paper" ? (
+                  <Link
+                    key={`paper-${h.id}`}
+                    to="/exams"
+                    search={{ p: h.id }}
+                    onClick={() => {
+                      setSearchOpen(false);
+                      setQ("");
+                    }}
+                    className="block rounded-md px-3 py-2.5 hover:bg-muted"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-[0.6875rem] font-medium text-cinnabar">真题</span>
+                      <span className="truncate text-sm font-medium">{h.title}</span>
+                    </div>
+                    <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{h.snippet}</p>
+                  </Link>
+                ) : h.kind === "move" ? (
+                  <Link
+                    key={`move-${h.id}`}
+                    to="/learn/$moveId"
+                    params={{ moveId: h.id }}
+                    onClick={() => {
+                      setSearchOpen(false);
+                      setQ("");
+                    }}
+                    className="block rounded-md px-3 py-2.5 hover:bg-muted"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-[0.6875rem] font-medium text-cinnabar">手法</span>
+                      <span className="truncate text-sm font-medium">{h.title}</span>
+                    </div>
+                    <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{h.snippet}</p>
+                  </Link>
+                ) : h.kind === "ai" ? (
                   <Link
                     key={`ai-${h.lessonId}`}
                     to="/ai/$lessonId"
@@ -331,7 +441,7 @@ function NavItem({
   icon: Icon,
   label,
 }: {
-  to: "/" | "/formulas" | "/drill" | "/read/$chapterId" | "/ai";
+  to: "/" | "/formulas" | "/drill" | "/read/$chapterId" | "/ai" | "/learn" | "/exams";
   params?: { chapterId: string };
   active: boolean;
   icon: typeof Home;
@@ -361,7 +471,7 @@ function MobileItem({
   icon: Icon,
   label,
 }: {
-  to: "/" | "/formulas" | "/drill" | "/read/$chapterId" | "/ai";
+  to: "/" | "/formulas" | "/drill" | "/read/$chapterId" | "/ai" | "/learn" | "/exams";
   params?: { chapterId: string };
   active: boolean;
   icon: typeof Home;

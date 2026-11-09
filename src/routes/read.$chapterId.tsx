@@ -15,6 +15,8 @@ import {
   shortChapterTitle,
 } from "@/lib/content";
 import { PLAIN } from "@/lib/content/plain";
+import { getGuide } from "@/lib/content/guides";
+import { moveForSection } from "@/lib/content/moves";
 import { sectionKey, useProgress } from "@/lib/progress";
 import type { Priority } from "@/lib/content/types";
 import { cn } from "@/lib/utils";
@@ -49,6 +51,16 @@ function Reader() {
   const mastered = useProgress((s) => s.mastered);
   const isMastered = Boolean(mastered[sectionKey(chapterId, sectionId)]);
   const plain = PLAIN[`${chapterId}:${sectionId}`];
+  const guide = getGuide(chapterId, sectionId);
+  const move = moveForSection(chapterId, sectionId);
+  const [bookOpen, setBookOpen] = useState(false);
+  const [heard, setHeard] = useState(false);
+  const bookIsMap =
+    sectionId === "intro" ||
+    sectionId === "scope" ||
+    sectionId === "howto" ||
+    sectionId === "ch6-check" ||
+    sectionId === "ch78-ex";
 
   useEffect(() => {
     if (chapter) markSeen(chapterId, sectionId);
@@ -56,6 +68,8 @@ function Reader() {
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
+    setBookOpen(false);
+    setHeard(false);
   }, [chapterId, sectionId]);
 
   if (!chapter || !pack) {
@@ -111,7 +125,53 @@ function Reader() {
           {pack.section ? pack.title : shortChapterTitle(chapter)}
         </h1>
 
-        {plain ? (
+        {guide ? (
+          <div className="mt-6">
+            <p className="text-xs font-medium tracking-wide text-cinnabar">先建立感觉</p>
+            <MarkdownView markdown={guide.open} className="mt-3" />
+            <BeatList items={guide.beats} tone="plain" />
+            {guide.deep && guide.deep.length > 0 ? (
+              <div className="mt-8 border-t border-border pt-6">
+                <p className="text-xs font-medium tracking-wide text-primary">
+                  再讲到能做题
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  上面只是感觉。下面把定义、公式和考试会问的那一句补上，仍然一次只加一个想法。
+                </p>
+                <BeatList items={guide.deep} tone="deep" />
+              </div>
+            ) : null}
+            <div className="mt-8 rounded-xl bg-sunken p-4">
+              <p className="text-xs font-medium tracking-wide text-pine">先停一下</p>
+              <MarkdownView markdown={guide.pause} className="mt-2" />
+              {heard ? (
+                <div className="mt-4 border-t border-border pt-4">
+                  <p className="text-xs font-medium tracking-wide text-muted-foreground">
+                    对上了吗
+                  </p>
+                  <MarkdownView markdown={guide.land} className="mt-2" />
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setHeard(true)}
+                  className="mt-3 flex h-11 items-center text-sm font-medium text-primary"
+                >
+                  我想过了，看一句
+                </button>
+              )}
+            </div>
+            {move ? (
+              <Link
+                to="/learn/$moveId"
+                params={{ moveId: move.id }}
+                className="mt-3 inline-flex h-11 items-center text-sm text-primary"
+              >
+                这一节听懂了，做题按手法写
+              </Link>
+            ) : null}
+          </div>
+        ) : plain ? (
           <div className="mt-5 rounded-xl bg-card p-4 shadow-[var(--shadow-border)]">
             <p className="text-[0.6875rem] font-medium tracking-wide text-cinnabar">人话版</p>
             <p className="mt-1.5 text-sm leading-relaxed">{plain}</p>
@@ -130,7 +190,27 @@ function Reader() {
         ) : null}
 
         <div className="mt-6">
-          <MarkdownView markdown={pack.markdown || "_（本章无独立章首说明）_"} />
+          {guide && !bookIsMap ? (
+            <button
+              type="button"
+              onClick={() => setBookOpen((v) => !v)}
+              className="mb-4 flex h-11 items-center text-sm text-primary"
+            >
+              {bookOpen ? "收起书上的写法" : "需要核对编号时，再展开书上的写法"}
+            </button>
+          ) : null}
+          {guide && bookIsMap ? (
+            <p className="mb-4 text-sm text-muted-foreground">
+              上面先讲怎么理解，再补到考试要写的程度。下面的表只用来核对范围和题号。
+            </p>
+          ) : null}
+          {!guide || bookIsMap || bookOpen ? (
+            <MarkdownView markdown={pack.markdown || "_（本章无独立章首说明）_"} />
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              第一遍先把上面两截听完：先是感觉，再是考试要写的程度。自己把那一句说出来。定理编号和例题按书收在这里，核对时再展开。
+            </p>
+          )}
         </div>
 
         <div className="mt-10 flex flex-col gap-3 border-t border-border pt-6 sm:flex-row sm:items-center sm:justify-between">
@@ -191,6 +271,29 @@ function Reader() {
         </div>
       ) : null}
     </div>
+  );
+}
+
+function BeatList({ items, tone }: { items: string[]; tone: "plain" | "deep" }) {
+  return (
+    <ol className={tone === "plain" ? "mt-8" : "mt-6"}>
+      {items.map((beat, i) => (
+        <li key={i} className="grid grid-cols-[1.25rem_minmax(0,1fr)] gap-x-3">
+          <div className="flex flex-col items-center">
+            <span
+              className={cn(
+                "mt-2 size-2 shrink-0 rounded-full",
+                tone === "deep" ? "bg-cinnabar" : "bg-primary",
+              )}
+            />
+            {i < items.length - 1 ? <span className="my-1 w-px flex-1 bg-border" /> : null}
+          </div>
+          <div className={cn(i < items.length - 1 && "pb-6")}>
+            <MarkdownView markdown={beat} />
+          </div>
+        </li>
+      ))}
+    </ol>
   );
 }
 

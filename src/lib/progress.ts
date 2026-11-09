@@ -8,14 +8,20 @@ export type ProgressState = {
   proofsDone: Record<string, boolean>;
   exercisesDone: Record<string, boolean>;
   aiMastered: Record<string, boolean>;
+  movesDone: Record<string, boolean>;
+  examsDone: Record<string, boolean>;
   lastChapterId: string | null;
   lastSectionId: string | null;
   lastAiLessonId: string | null;
+  lastMoveId: string | null;
   markSeen: (chapterId: string, sectionId: string) => void;
   markAiSeen: (lessonId: string) => void;
+  markMove: (id: string) => void;
   toggleMastered: (chapterId: string, sectionId: string) => void;
   setMastered: (chapterId: string, sectionId: string, value: boolean) => void;
   toggleAiMastered: (lessonId: string) => void;
+  toggleMove: (id: string) => void;
+  toggleExam: (id: string) => void;
   toggleMixup: (id: string) => void;
   toggleProof: (id: string) => void;
   toggleExercise: (id: string) => void;
@@ -33,9 +39,12 @@ const empty = {
   proofsDone: {} as Record<string, boolean>,
   exercisesDone: {} as Record<string, boolean>,
   aiMastered: {} as Record<string, boolean>,
+  movesDone: {} as Record<string, boolean>,
+  examsDone: {} as Record<string, boolean>,
   lastChapterId: null as string | null,
   lastSectionId: null as string | null,
   lastAiLessonId: null as string | null,
+  lastMoveId: null as string | null,
 };
 
 export const useProgress = create<ProgressState>()(
@@ -50,6 +59,7 @@ export const useProgress = create<ProgressState>()(
         })),
       markAiSeen: (lessonId) =>
         set({ lastAiLessonId: lessonId }),
+      markMove: (id) => set({ lastMoveId: id }),
       toggleMastered: (chapterId, sectionId) =>
         set((s) => {
           const k = sectionKey(chapterId, sectionId);
@@ -63,6 +73,16 @@ export const useProgress = create<ProgressState>()(
         set((s) => {
           const prev = s.aiMastered ?? {};
           return { aiMastered: { ...prev, [lessonId]: !prev[lessonId] } };
+        }),
+      toggleMove: (id) =>
+        set((s) => {
+          const prev = s.movesDone ?? {};
+          return { movesDone: { ...prev, [id]: !prev[id] } };
+        }),
+      toggleExam: (id) =>
+        set((s) => {
+          const prev = s.examsDone ?? {};
+          return { examsDone: { ...prev, [id]: !prev[id] } };
         }),
       toggleMixup: (id) =>
         set((s) => ({ mixupKnown: { ...s.mixupKnown, [id]: !s.mixupKnown[id] } })),

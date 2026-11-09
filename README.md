@@ -9,7 +9,9 @@
 | 路径 | 内容 |
 |---|---|
 | `/` | 章节目录、进度、下一节 |
+| `/learn` | 手法：一屏只讲一件事，先会做再看公式 |
 | `/read/ch1` … `/read/ch9` | 分节讲义。第 5 章无正文；第 9 章保留正文，但整章标记为不考 |
+| `/exams` | 东北大学 2015–2026 共 11 套期末真题，按章排列。题面先出，详解默认收起 |
 | `/formulas` | 公式卡片 |
 | `/drill` | 易混点、证明提纲、指定习题。题面默认展开，详解要点「看详解」 |
 | `/ai` | AI 视角：softmax 平移、条件数、Adam 的 ε、混合精度、量化 |
@@ -59,6 +61,9 @@ npm run build
 | 文件 | 作用 |
 |---|---|
 | `src/lib/content/lecture.json` | 各章正文 |
+| `src/lib/content/moves.ts` | 手法 |
+| `src/lib/content/guides.ts` | 讲义里的口播说明 |
+| `src/lib/content/papers.json` | 11 套真题题面与详解 |
 | `src/lib/content/formulas.ts` | 公式卡片 |
 | `src/lib/content/exercises.ts` | 指定习题题面 |
 | `src/lib/content/solutions.ts` | 46 道详解的入口 |
