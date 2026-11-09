@@ -158,13 +158,23 @@ function PaperCard({
         </span>
       </div>
       <h2 className="mt-1 font-display text-xl font-semibold tracking-tight">{item.title}</h2>
-      {item.point ? <p className="mt-1 text-sm text-muted-foreground">{item.point}</p> : null}
-      {item.note ? <p className="mt-1 text-sm text-muted-foreground">{item.note}</p> : null}
+      {item.point ? (
+        <div className="mt-1 text-sm text-muted-foreground">
+          <MarkdownView markdown={item.point} />
+        </div>
+      ) : null}
+      {item.note ? (
+        <div className="mt-1 text-sm text-muted-foreground">
+          <MarkdownView markdown={item.note} />
+        </div>
+      ) : null}
       <div className="mt-4">
         <MarkdownView markdown={item.question || "_原卷没有题面。_"} />
       </div>
       {item.scope === "missing" && item.solution ? (
-        <p className="mt-3 text-sm text-muted-foreground">{item.solution}</p>
+        <div className="mt-3 text-sm text-muted-foreground">
+          <MarkdownView markdown={item.solution} />
+        </div>
       ) : null}
       <p className="mt-2 text-xs text-subtle">{item.source}</p>
       <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-border pt-3">

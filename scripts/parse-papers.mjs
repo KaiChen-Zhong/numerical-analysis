@@ -17,6 +17,72 @@ const chapterOf = (heading) => {
   return null;
 };
 
+function splitTags(body) {
+  const tags = body.match(/\\tag\s*\{/g) || [];
+  if (tags.length <= 1) return [body];
+  return body
+    .split(/\\qquad\s*/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+}
+
+function reflowText(text) {
+  const lines = text.split("\n");
+  let out = "";
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (i === 0) {
+      out += line;
+      continue;
+    }
+    const prev = lines[i - 1];
+    const table = (s) => /^\s*\|/.test(s);
+    if (line.trim() === "" || prev.trim() === "" || table(line) || table(prev)) out += `\n${line}`;
+    else out += `\n\n${line}`;
+  }
+  return out;
+}
+
+export function formatMarkdown(text, { reflow = false } = {}) {
+  if (!text) return text;
+  const parts = [];
+  let buf = "";
+  let i = 0;
+  const flush = () => {
+    parts.push({ t: "text", v: buf });
+    buf = "";
+  };
+  while (i < text.length) {
+    if (text.startsWith("$$", i)) {
+      const end = text.indexOf("$$", i + 2);
+      if (end < 0) {
+        buf += text.slice(i);
+        break;
+      }
+      flush();
+      parts.push({ t: "math", v: text.slice(i + 2, end) });
+      i = end + 2;
+      continue;
+    }
+    buf += text[i];
+    i += 1;
+  }
+  flush();
+  let out = "";
+  for (const part of parts) {
+    if (part.t === "text") {
+      out += reflow ? reflowText(part.v) : part.v;
+      continue;
+    }
+    for (const body of splitTags(part.v)) {
+      const trimmed = body.trim();
+      if (!trimmed) continue;
+      out += `\n\n$$\n${trimmed}\n$$\n\n`;
+    }
+  }
+  return out.replace(/\n{3,}/g, "\n\n").trim();
+}
+
 function classify(raw) {
   const name = raw.replace(/[：:。．\s]+$/u, "");
   if (name.startsWith("出处")) return "source";
@@ -107,11 +173,11 @@ function push() {
     title: current.title,
     ...chapter,
     source: fields.source,
-    question,
-    point: fields.point,
-    note: fields.note,
-    solution: fields.solution,
-    answer: fields.answer,
+    question: formatMarkdown(question, { reflow: true }),
+    point: formatMarkdown(fields.point),
+    note: formatMarkdown(fields.note),
+    solution: formatMarkdown(fields.solution, { reflow: true }),
+    answer: formatMarkdown(fields.answer, { reflow: true }),
     scope: scopeOf(fields.point, fields.solution, question),
   });
   current = null;
