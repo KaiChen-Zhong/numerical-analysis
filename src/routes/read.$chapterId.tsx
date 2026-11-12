@@ -17,6 +17,7 @@ import {
 import { PLAIN } from "@/lib/content/plain";
 import { getGuide } from "@/lib/content/guides";
 import { moveForSection } from "@/lib/content/moves";
+import { ChapterKit } from "@/components/chapter-kit";
 import { sectionKey, useProgress } from "@/lib/progress";
 import type { Priority } from "@/lib/content/types";
 import { cn } from "@/lib/utils";
@@ -95,7 +96,7 @@ function Reader() {
   }
 
   return (
-    <div className="mx-auto flex max-w-5xl gap-8">
+    <div className="mx-auto flex min-w-0 max-w-5xl gap-8">
       <nav className="sticky top-20 hidden h-[calc(100dvh-7rem)] w-56 shrink-0 overflow-y-auto xl:block">
         <Toc
           currentChapter={chapterId}
@@ -104,7 +105,7 @@ function Reader() {
         />
       </nav>
 
-      <article className="min-w-0 flex-1">
+      <article className="min-w-0 max-w-full flex-1">
         <div className="mb-5 flex items-center gap-2">
           <button
             type="button"
@@ -136,7 +137,7 @@ function Reader() {
                   再讲到能做题
                 </p>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  上面只是感觉。下面把定义、公式和考试会问的那一句补上，仍然一次只加一个想法。
+                  题干和这一题的演算在上面。下面是同一套式子的一般写法，以及考试会卡的条件。
                 </p>
                 <BeatList items={guide.deep} tone="deep" />
               </div>
@@ -188,6 +189,8 @@ function Reader() {
               : ""}
           </p>
         ) : null}
+
+        <ChapterKit chapterId={chapterId} sectionId={sectionId} />
 
         <div className="mt-6">
           {guide && !bookIsMap ? (

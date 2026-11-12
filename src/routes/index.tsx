@@ -61,7 +61,7 @@ function Home() {
           数值分析考试讲义
         </h1>
         <p className="mt-4 max-w-xl text-base text-muted-foreground">
-          每一节先从你已经会的地方讲起，再顺着补到考试要写的程度。自己能说出来，再按手法做题。
+          每一节先从你已经会的地方讲起，再顺着补到考试要写的程度。章首有这一章的全部公式，和一道从题干算到答案的例题。
         </p>
       </header>
 
@@ -164,7 +164,7 @@ function Home() {
                 to="/read/$chapterId"
                 params={{ chapterId: ch.id }}
                 className={cn(
-                  "group rounded-xl bg-card p-4 shadow-[var(--shadow-border)] transition-[box-shadow] duration-150 hover:shadow-[var(--shadow-border-hover)]",
+                  "group min-w-0 overflow-hidden rounded-xl bg-card p-4 shadow-[var(--shadow-border)] transition-[box-shadow] duration-150 hover:shadow-[var(--shadow-border-hover)]",
                   pri === "out" && "opacity-80",
                 )}
               >

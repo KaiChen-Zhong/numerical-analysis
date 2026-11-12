@@ -36,7 +36,7 @@ function FormulasPage() {
       <p className="text-xs font-medium tracking-[0.16em] text-cinnabar">速查</p>
       <h1 className="mt-2 font-display text-3xl font-semibold tracking-tight">公式与条件</h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        默认只列考试范围。先看成立条件，再套公式。第9章差分格式不考，在「不考」里翻。
+        每章章首也列着同一套式子，并配一道算到底的例题。默认这里只列考试范围。先看成立条件，再套公式。第9章差分格式不考，在「不考」里翻。
       </p>
 
       <div className="sticky top-14 z-10 -mx-4 mt-6 bg-background/90 px-4 py-3 backdrop-blur-sm">
